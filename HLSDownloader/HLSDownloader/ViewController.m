@@ -13,6 +13,9 @@
 #import "HLSMediaSegmentsManager.h"
 #import "HLSUtils.h"
 
+#define UserDefaultsHLSURLKey           @"hlsurl"
+#define UserDefaultsDownloadFolderKey   @"downloadfolder"
+
 @interface ViewController () <HLSParserDelegate, NSTextFieldDelegate, HLSMediaSegmentsManagerDelegate>
 
 @property (nonatomic, weak) IBOutlet NSTextField *tfUrl;
@@ -75,15 +78,28 @@
     self.piDownloadProgress.minValue = 0;
     self.piDownloadProgress.maxValue = 100;
     self.piDownloadProgress.doubleValue = 0;
-    [self initFolderPath];
+    [self loadHLSUrl];
+    [self loadDownloadFolder];
 }
 
-- (void)initFolderPath {
-    NSString *downloadFolder = [NSSearchPathForDirectoriesInDomains(NSDownloadsDirectory, NSUserDomainMask, YES) firstObject];
-    self.folderPath = [downloadFolder stringByAppendingPathComponent:@"ts"];
-    self.tfFolderPath.stringValue = self.folderPath;
+- (void)initHLSParser {
+    if (self.hlsParser) {
+        [self.hlsParser cancelDownloadFile];
+        self.hlsParser = nil;
+    }
     
-    self.tfUrl.stringValue = @"http://hzhls01.ys7.com:7889/hcnp/498570008_1_1_1_0_cas.ys7.com_6500.m3u8?f290f2a7bed14bf08cc769a2d897d835";
+    NSString *hlsfileurl = self.tfUrl.stringValue;
+    if (hlsfileurl.length == 0) return;
+    HLSParser *parser = [[HLSParser alloc] initWithURL:hlsfileurl];
+    parser.delegate = self;
+    self.hlsParser = parser;
+}
+
+- (void)initMediaFile {
+    NSURL *url = [NSURL URLWithString:self.hlsParser.urlString];
+    NSString *filename = [[url.lastPathComponent stringByDeletingPathExtension] stringByAppendingPathExtension:@"ts"];
+    NSString *filepath = [_folderPath stringByAppendingPathComponent:filename];
+    self.mediaFile = filepath;
 }
 
 #pragma mark - Setter / Getter
@@ -128,6 +144,7 @@
         NSString *folderPath = [[url.absoluteString stringByReplacingOccurrencesOfString:@"file://" withString:@""] stringByRemovingPercentEncoding];
         self.tfFolderPath.stringValue = folderPath;
         self.folderPath = folderPath;
+        [self saveDownloadFolder];
     }];
 }
 
@@ -145,6 +162,7 @@
         self.tfHLSFilePath.stringValue = file;
         self.hlsFile = file;
         if (self.hlsObject != nil) self.hlsObject = nil;
+        [self saveDownloadFolder];
         if ([self parseHLSFile:file withURL:nil]) [self startDownloadTSStream];
     }];
 }
@@ -167,6 +185,8 @@
 - (IBAction)onDownloadTapped:(id)sender {
     [self initHLSParser];
     [self initMediaFile];
+    [self saveHLSUrl];
+    [self saveDownloadFolder];
     if (self.downloading) [self stopDownloadHLSFile];
     else [self startDownloadHLSFile];
 }
@@ -181,26 +201,6 @@
 }
 
 #pragma mark - Download
-- (void)initHLSParser {
-    if (self.hlsParser) {
-        [self.hlsParser cancelDownloadFile];
-        self.hlsParser = nil;
-    }
-    
-    NSString *hlsfileurl = self.tfUrl.stringValue;
-    if (hlsfileurl.length == 0) return;
-    HLSParser *parser = [[HLSParser alloc] initWithURL:hlsfileurl];
-    parser.delegate = self;
-    self.hlsParser = parser;
-}
-
-- (void)initMediaFile {
-    NSURL *url = [NSURL URLWithString:self.hlsParser.urlString];
-    NSString *filename = [[url.lastPathComponent stringByDeletingPathExtension] stringByAppendingPathExtension:@"ts"];
-    NSString *filepath = [_folderPath stringByAppendingPathComponent:filename];
-    self.mediaFile = filepath;
-}
-
 - (void)startDownloadHLSFile {
     self.startDownloadTime = [NSDate date].timeIntervalSinceReferenceDate;
     [self.hlsParser startDownloadFile];
@@ -406,6 +406,38 @@
     content = [NSString stringWithFormat:@"Done! The HLS file is %@.", isNewHLS ? @"changed" : @"not changed"];
     [self appendContentToTextView:content];
     return isNewHLS;
+}
+
+#pragma mark - Save / Load
+- (void)saveHLSUrl {
+    NSString *hslurl = self.tfUrl.stringValue;
+    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    if (hslurl.length == 0) [ud removeObjectForKey:UserDefaultsHLSURLKey];
+    else [ud setObject:hslurl forKey:UserDefaultsHLSURLKey];
+    [ud synchronize];
+}
+
+- (NSString *)loadHLSUrl {
+    NSString *hslurl = [[NSUserDefaults standardUserDefaults] objectForKey:UserDefaultsHLSURLKey];
+    if (hslurl == nil) hslurl = @"";
+    self.tfUrl.stringValue = hslurl;
+    return hslurl;
+}
+
+- (void)saveDownloadFolder {
+    NSString *downloadfolder = _folderPath;
+    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    if (downloadfolder.length == 0) [ud removeObjectForKey:UserDefaultsDownloadFolderKey];
+    else [ud setObject:downloadfolder forKey:UserDefaultsDownloadFolderKey];
+    [ud synchronize];
+}
+
+- (NSString *)loadDownloadFolder {
+    NSString *downloadFolder = [[NSUserDefaults standardUserDefaults] objectForKey:UserDefaultsDownloadFolderKey];
+    if (downloadFolder == nil) downloadFolder = [NSSearchPathForDirectoriesInDomains(NSDownloadsDirectory, NSUserDomainMask, YES) firstObject];
+    self.tfFolderPath.stringValue = downloadFolder;
+    self.folderPath = downloadFolder;
+    return downloadFolder;
 }
 
 @end
