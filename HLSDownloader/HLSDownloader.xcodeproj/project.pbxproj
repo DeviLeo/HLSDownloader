@@ -10,6 +10,9 @@
 		E807674A1F32C07E004FFB0E /* HLSMediaSegmentsManager.m in Sources */ = {isa = PBXBuildFile; fileRef = E80767491F32C07E004FFB0E /* HLSMediaSegmentsManager.m */; };
 		E80767541F32EED3004FFB0E /* HLSUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = E80767531F32EED3004FFB0E /* HLSUtils.m */; };
 		E82AC0831F304760002314D6 /* HLSDownloader.m in Sources */ = {isa = PBXBuildFile; fileRef = E82AC0821F304760002314D6 /* HLSDownloader.m */; };
+		E83E90011F50182A008E3569 /* HLSMasterPlaylist.m in Sources */ = {isa = PBXBuildFile; fileRef = E83E90001F50182A008E3569 /* HLSMasterPlaylist.m */; };
+		E83E90041F501836008E3569 /* HLSStreamInfo.m in Sources */ = {isa = PBXBuildFile; fileRef = E83E90031F501836008E3569 /* HLSStreamInfo.m */; };
+		E83E90071F5018F1008E3569 /* HLSMedia.m in Sources */ = {isa = PBXBuildFile; fileRef = E83E90061F5018F1008E3569 /* HLSMedia.m */; };
 		E84CE51C1F302DCA002E08A7 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = E84CE51B1F302DCA002E08A7 /* AppDelegate.m */; };
 		E84CE51F1F302DCA002E08A7 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = E84CE51E1F302DCA002E08A7 /* ViewController.m */; };
 		E84CE5211F302DCA002E08A7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E84CE5201F302DCA002E08A7 /* Assets.xcassets */; };
@@ -31,6 +34,13 @@
 		E82AC0841F3058C1002314D6 /* HLSConstants.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HLSConstants.h; sourceTree = "<group>"; };
 		E82AC0851F305A32002314D6 /* HLSParserDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HLSParserDelegate.h; sourceTree = "<group>"; };
 		E82AC0861F305F61002314D6 /* HLSErrorDef.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HLSErrorDef.h; sourceTree = "<group>"; };
+		E83E8FFF1F50182A008E3569 /* HLSMasterPlaylist.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HLSMasterPlaylist.h; sourceTree = "<group>"; };
+		E83E90001F50182A008E3569 /* HLSMasterPlaylist.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HLSMasterPlaylist.m; sourceTree = "<group>"; };
+		E83E90021F501836008E3569 /* HLSStreamInfo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HLSStreamInfo.h; sourceTree = "<group>"; };
+		E83E90031F501836008E3569 /* HLSStreamInfo.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HLSStreamInfo.m; sourceTree = "<group>"; };
+		E83E90051F5018F1008E3569 /* HLSMedia.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HLSMedia.h; sourceTree = "<group>"; };
+		E83E90061F5018F1008E3569 /* HLSMedia.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HLSMedia.m; sourceTree = "<group>"; };
+		E83E900B1F501B93008E3569 /* HLSTypeDef.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HLSTypeDef.h; sourceTree = "<group>"; };
 		E84CE5171F302DCA002E08A7 /* HLSDownloader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HLSDownloader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E84CE51A1F302DCA002E08A7 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		E84CE51B1F302DCA002E08A7 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -132,6 +142,7 @@
 			children = (
 				E8F8212A1F317EEF0034578E /* HLSObject */,
 				E82AC0841F3058C1002314D6 /* HLSConstants.h */,
+				E83E900B1F501B93008E3569 /* HLSTypeDef.h */,
 				E82AC0861F305F61002314D6 /* HLSErrorDef.h */,
 				E84CE5351F303181002E08A7 /* HLSParser.h */,
 				E84CE5361F303181002E08A7 /* HLSParser.m */,
@@ -152,6 +163,12 @@
 				E8F8212C1F317EEF0034578E /* HLSObject.m */,
 				E8F821341F31D2D40034578E /* HLSMediaSegment.h */,
 				E8F821351F31D2D40034578E /* HLSMediaSegment.m */,
+				E83E8FFF1F50182A008E3569 /* HLSMasterPlaylist.h */,
+				E83E90001F50182A008E3569 /* HLSMasterPlaylist.m */,
+				E83E90021F501836008E3569 /* HLSStreamInfo.h */,
+				E83E90031F501836008E3569 /* HLSStreamInfo.m */,
+				E83E90051F5018F1008E3569 /* HLSMedia.h */,
+				E83E90061F5018F1008E3569 /* HLSMedia.m */,
 			);
 			path = HLSObject;
 			sourceTree = "<group>";
@@ -226,11 +243,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				E807674A1F32C07E004FFB0E /* HLSMediaSegmentsManager.m in Sources */,
+				E83E90041F501836008E3569 /* HLSStreamInfo.m in Sources */,
 				E82AC0831F304760002314D6 /* HLSDownloader.m in Sources */,
 				E84CE51F1F302DCA002E08A7 /* ViewController.m in Sources */,
 				E8F8212D1F317EEF0034578E /* HLSObject.m in Sources */,
 				E84CE5271F302DCB002E08A7 /* main.m in Sources */,
+				E83E90011F50182A008E3569 /* HLSMasterPlaylist.m in Sources */,
 				E84CE5371F303181002E08A7 /* HLSParser.m in Sources */,
+				E83E90071F5018F1008E3569 /* HLSMedia.m in Sources */,
 				E80767541F32EED3004FFB0E /* HLSUtils.m in Sources */,
 				E84CE51C1F302DCA002E08A7 /* AppDelegate.m in Sources */,
 				E8F821361F31D2D40034578E /* HLSMediaSegment.m in Sources */,

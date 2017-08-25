@@ -7,14 +7,10 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "HLSTypeDef.h"
 
 @class HLSMediaSegment;
-
-typedef enum : NSUInteger {
-    HLSPlaylistTypeUndefined,
-    HLSPlaylistTypeEvent,
-    HLSPlaylistTypeVOD,
-} HLSPlaylistType;
+@class HLSMasterPlaylist;
 
 @interface HLSObject : NSObject
 
@@ -29,6 +25,7 @@ typedef enum : NSUInteger {
 @property (nonatomic) BOOL endList;
 @property (nonatomic) HLSPlaylistType playlistType;
 @property (nonatomic) NSMutableArray<HLSMediaSegment *> *segments;
+@property (nonatomic) HLSMasterPlaylist *masterPlaylist;
 
 - (instancetype)initWithFile:(NSString *)file;
 - (void)parse;
