@@ -8,16 +8,12 @@
 
 #import "HLSObject.h"
 #import "HLSConstants.h"
-#import "HLSMediaSegment.h"
 #import "HLSMasterPlaylist.h"
 #import "HLSStreamInfo.h"
 #import "HLSMedia.h"
-
-@interface HLSObject ()
-
-@property (nonatomic) NSInteger currentMediaSequence;
-
-@end
+#import "HLSMediaPlaylist.h"
+#import "HLSMediaSegment.h"
+#import "HLSErrorDef.h"
 
 @implementation HLSObject
 
@@ -33,27 +29,53 @@
 #pragma mark - Init
 - (void)initVars {
     self.url = nil;
-    self.version = 0;
-    self.discontinuity = NO;
-    self.targetDuration = 0;
-    self.mediaSequence = 0;
-    self.currentMediaSequence = 0;
-    self.endList = NO;
-    self.segments = [NSMutableArray arrayWithCapacity:8];
+    self.mediaPlaylist = [[HLSMediaPlaylist alloc] init];
     self.masterPlaylist = [[HLSMasterPlaylist alloc] init];
 }
 
 #pragma mark - Parse
-- (void)parse {
+- (BOOL)parse {
+    return [self parseWithError:nil];
+}
+
+- (BOOL)parseWithError:(NSError **)parseError {
     NSError *error = nil;
     NSString *content = [NSString stringWithContentsOfFile:self.file encoding:NSUTF8StringEncoding error:&error];
     if (error) {
         NSLog(@"*** stringWithContentsOfFile: %@ error: %@", self.file, error);
-        return;
+        if (parseError != nil) *parseError = error;
+        return NO;
     }
+    
+    HLSPlaylistType type = [self determinePlaylistType:content];
+    if (type == HLSPlaylistTypeUnknown || type == HLSPlaylistTypeUndefined) {
+        NSString *errorMessage = @"The playlist is invalid.";
+        NSLog(@"%@", errorMessage);
+        if (parseError != nil) *parseError = [NSError errorWithDomain:HLSErrorDomain
+                                                                 code:HLSErrorCodeInvalidPlaylist
+                                                             userInfo:@{NSLocalizedDescriptionKey:errorMessage}];
+        return NO;
+    }
+    self.playlistType = type;
     
     NSArray<NSString *> *allLines = [content componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
     [self parseHLSContent:allLines];
+    return YES;
+}
+
+- (HLSPlaylistType)determinePlaylistType:(NSString *)content {
+    HLSPlaylistType type = HLSPlaylistTypeUndefined;
+    
+    // Check "EXT-X-TARGETDURATION" tag to detemine the playlist whether is a media playlist or not.
+    BOOL isMediaPlaylist = [content rangeOfString:HLSTagTargetDuration].location != NSNotFound;
+    // Check "EXT-X-STREAM-INF" tag to detemine the playlist whether is a master playlist or not.
+    BOOL isMasterPlaylist = [content rangeOfString:HLSTagStreamINF].location != NSNotFound;
+    
+    if (isMediaPlaylist && !isMasterPlaylist) type = HLSPlaylistTypeMedia;
+    else if (!isMediaPlaylist && isMasterPlaylist) type = HLSPlaylistTypeMaster;
+    else type = HLSPlaylistTypeUnknown;
+    
+    return type;
 }
 
 - (void)parseHLSContent:(NSArray<NSString *> *)content {
@@ -90,27 +112,28 @@
     return NO;
 }
 
-- (BOOL)parseLine:(NSString *)line moreLines:(NSArray<NSString *> *)moreLines {
-    BOOL parsed = YES;
+- (void)parseLine:(NSString *)line moreLines:(NSArray<NSString *> *)moreLines {
     if ([line isEqualToString:HLSTagHeader]) {
-        return YES;
+        return;
     } else if ([line hasPrefix:HLSTagVersion]) {
-        self.version = [self parseDecimalInteger:line];
+        self.mediaPlaylist.version = [self parseDecimalInteger:line];
     } else if ([line isEqualToString:HLSTagDiscontinuity]) {
-        self.discontinuity = YES;
+        self.mediaPlaylist.discontinuity = YES;
     } else if ([line hasPrefix:HLSTagTargetDuration]) {
-        self.targetDuration = [self parseDecimalInteger:line];
+        self.mediaPlaylist.targetDuration = [self parseDecimalInteger:line];
     } else if ([line hasPrefix:HLSTagMediaSequence]) {
-        self.mediaSequence = [self parseDecimalInteger:line];
-        self.currentMediaSequence = self.mediaSequence;
+        self.mediaPlaylist.mediaSequence = [self parseDecimalInteger:line];
     } else if ([line hasPrefix:HLSTagDiscontinuitySequence]) {
-        self.discontinuitySequence = [self parseDecimalInteger:line];
+        self.mediaPlaylist.discontinuitySequence = [self parseDecimalInteger:line];
     } else if ([line hasPrefix:HLSTagINF]) {
-        parsed = [self parseMediaSegment:line moreLines:moreLines];
+        HLSMediaSegment *segment = [self parseMediaSegment:line moreLines:moreLines];
+        segment.sequence = self.mediaPlaylist.currentMediaSequence++;
+        [self.mediaPlaylist.segments addObject:segment];
+        self.mediaPlaylist.lastMediaSegmentDuration = segment.duration;
     } else if ([line isEqualToString:HLSTagEndList]) {
-        self.endList = YES;
+        self.mediaPlaylist.endList = YES;
     } else if ([line hasPrefix:HLSTagPlaylistType]) {
-        self.playlistType = [self parsePlaylistType:line];
+        self.mediaPlaylist.type = [self parseMediaPlaylistType:line];
     } else if ([line hasPrefix:HLSTagStreamINF]) {
         HLSStreamInfo *stream = [self parseStreamInf:line moreLines:moreLines];
         [self.masterPlaylist.streams addObject:stream];
@@ -121,7 +144,6 @@
         HLSMedia *media = [self parseMedia:line];
         [self.masterPlaylist.media addObject:media];
     }
-    return parsed;
 }
 
 - (HLSMedia *)parseMedia:(NSString *)line {
@@ -145,26 +167,26 @@
     return stream;
 }
 
-- (HLSPlaylistType)parsePlaylistType:(NSString *)line {
+- (HLSMediaPlaylistType)parseMediaPlaylistType:(NSString *)line {
     NSUInteger colonIndex = [line rangeOfString:@":"].location;
     if (colonIndex == NSNotFound) return 0;
     if (colonIndex + 1 >= line.length) return 0;
     NSString *s = [[line substringFromIndex:colonIndex+1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if ([s isEqualToString:HLSTagValuePlaylistTypeEvent]) {
-        return HLSPlaylistTypeEvent;
+        return HLSMediaPlaylistTypeEvent;
     } else if ([s isEqualToString:HLSTagValuePlaylistTypeVOD]) {
-        return HLSPlaylistTypeVOD;
+        return HLSMediaPlaylistTypeVOD;
     } else {
-        return HLSPlaylistTypeUndefined;
+        return HLSMediaPlaylistTypeUndefined;
     }
 }
 
-- (BOOL)parseMediaSegment:(NSString *)line moreLines:(NSArray<NSString *> *)moreLines {
+- (HLSMediaSegment *)parseMediaSegment:(NSString *)line moreLines:(NSArray<NSString *> *)moreLines {
     NSCharacterSet *whiteAndNewline = [NSCharacterSet whitespaceAndNewlineCharacterSet];
     line = [line stringByTrimmingCharactersInSet:whiteAndNewline];
     NSInteger commaIndex = [line rangeOfString:@","].location;
-    if (commaIndex == NSNotFound) return YES;
-    else if (commaIndex == line.length - 1 && moreLines.count == 0) return NO;
+    if (commaIndex == NSNotFound) return nil;
+    else if (commaIndex == line.length - 1 && moreLines.count == 0) return nil;
     
     NSString *durationString = [line substringToIndex:commaIndex];
     CGFloat duration = [self parseDecimalFloat:durationString];
@@ -176,19 +198,15 @@
     } else {
         url = [moreLines firstObject];
     }
-    [self createMediaSegment:duration url:url];
-    
-    return YES;
+    return [self createMediaSegment:duration url:url];
 }
 
-- (void)createMediaSegment:(CGFloat)duration url:(NSString *)url {
+- (HLSMediaSegment *)createMediaSegment:(CGFloat)duration url:(NSString *)url {
     HLSMediaSegment *segment = [[HLSMediaSegment alloc] init];
-    segment.sequence = self.currentMediaSequence++;
     segment.duration = duration;
     segment.url = [self validURL:url withHLSURL:self.url];
     segment.downloadable = YES;
-    [self.segments addObject:segment];
-    self.lastMediaSegmentDuration = duration;
+    return segment;
 }
 
 - (NSString *)validURL:(NSString *)segmentUrl withHLSURL:(NSString *)hslUrl {

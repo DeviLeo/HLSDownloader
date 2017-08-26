@@ -12,9 +12,16 @@
 typedef enum : NSUInteger {
     HLSPlaylistTypeUndefined,
     HLSPlaylistTypeUnknown,
-    HLSPlaylistTypeEvent,
-    HLSPlaylistTypeVOD,
+    HLSPlaylistTypeMaster,
+    HLSPlaylistTypeMedia,
 } HLSPlaylistType;
+
+typedef enum : NSUInteger {
+    HLSMediaPlaylistTypeUndefined,
+    HLSMediaPlaylistTypeUnknown,
+    HLSMediaPlaylistTypeEvent,
+    HLSMediaPlaylistTypeVOD,
+} HLSMediaPlaylistType;
 
 typedef enum : NSUInteger {
     HLSMediaTypeUndefined,

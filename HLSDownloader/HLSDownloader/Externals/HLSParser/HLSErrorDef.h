@@ -12,5 +12,6 @@
 #define HLSErrorDomain          @"cn.devileo.hls.error"
 #define HLSErrorCodeCancelled       -1
 #define HLSErrorCodeDownloadError   -2
+#define HLSErrorCodeInvalidPlaylist -3
 
 #endif /* HLSErrorDef_h */

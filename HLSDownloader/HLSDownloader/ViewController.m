@@ -9,6 +9,7 @@
 #import "ViewController.h"
 #import "HLSParser.h"
 #import "HLSObject.h"
+#import "HLSMediaPlaylist.h"
 #import "HLSMediaSegment.h"
 #import "HLSMediaSegmentsManager.h"
 #import "HLSUtils.h"
@@ -161,7 +162,6 @@
         NSString *file = [[url.absoluteString stringByReplacingOccurrencesOfString:@"file://" withString:@""] stringByRemovingPercentEncoding];
         self.tfHLSFilePath.stringValue = file;
         self.hlsFile = file;
-        if (self.hlsObject != nil) self.hlsObject = nil;
         [self saveDownloadFolder];
         if ([self parseHLSFile:file withURL:nil]) [self startDownloadTSStream];
     }];
@@ -226,14 +226,15 @@
 }
 
 - (void)startDownloadTSStream {
-    NSArray *segs = self.hlsObject.segments;
+    HLSMediaPlaylist *mediaPlaylist = self.hlsObject.mediaPlaylist;
+    NSArray *segs = mediaPlaylist.segments;
     for (HLSMediaSegment *seg in segs) {
         if (!seg.downloadable) continue;
         [self.hlsSegsManager addSegment:seg];
     }
-    self.reloadHLSPeriodically = !self.hlsObject.endList &&
-    self.hlsObject.playlistType != HLSPlaylistTypeVOD &&
-    self.hlsObject.targetDuration > 0;
+    self.reloadHLSPeriodically = !mediaPlaylist.endList &&
+    mediaPlaylist.type != HLSMediaPlaylistTypeVOD &&
+    mediaPlaylist.targetDuration > 0;
     [self.hlsSegsManager startDownloading];
 }
 
@@ -387,23 +388,52 @@
     }
     NSString *content = [NSString stringWithFormat:@"Start parsing HLS file: %@", file];
     [self appendContentToTextView:content];
+    
     HLSObject *theNewHLS = [[HLSObject alloc] initWithFile:file];
     theNewHLS.url = urlString;
-    [theNewHLS parse];
-    BOOL isNewHLS = [HLSUtils determineTheNewMediaSegment:theNewHLS old:self.hlsObject];
-    if (self.hlsObject == nil || isNewHLS) {
-        self.hlsObject = theNewHLS;
-        self.reloadHLSTimeInterval = self.hlsObject.lastMediaSegmentDuration;
-    } else { // HLS m3u8 not changed
-        self.reloadHLSPeriodically = !self.hlsObject.endList &&
-        self.hlsObject.playlistType != HLSPlaylistTypeVOD &&
-        self.hlsObject.targetDuration > 0;
-        if (self.reloadHLSPeriodically) {
-            self.reloadHLSTimeInterval = self.hlsObject.targetDuration / 2;
-            [self createTimerForHLSReloading];
+    NSError *error = nil;
+    if (![theNewHLS parseWithError:&error]) {
+        content = [NSString stringWithFormat:@"Error: %@", error.localizedDescription];
+        [self appendContentToTextView:content];
+        return NO;
+    }
+    
+    BOOL isNewHLS = (theNewHLS.playlistType != self.hlsObject.playlistType);
+    if (!isNewHLS && theNewHLS.playlistType == HLSPlaylistTypeMedia) {
+        isNewHLS = [HLSUtils determineTheNewMediaSegment:theNewHLS.mediaPlaylist old:self.hlsObject.mediaPlaylist];
+        HLSMediaPlaylist *mediaPlaylist = self.hlsObject.mediaPlaylist;
+        if (self.hlsObject == nil || isNewHLS) {
+            self.hlsObject = theNewHLS;
+            self.reloadHLSTimeInterval = mediaPlaylist.lastMediaSegmentDuration;
+        } else { // HLS m3u8 not changed
+            self.reloadHLSPeriodically = !mediaPlaylist.endList &&
+            mediaPlaylist.type != HLSMediaPlaylistTypeVOD &&
+            mediaPlaylist.targetDuration > 0;
+            if (self.reloadHLSPeriodically) {
+                self.reloadHLSTimeInterval = mediaPlaylist.targetDuration / 2;
+                [self createTimerForHLSReloading];
+            }
+        }
+    } else {
+        NSString *theOldType = @"unknown", *theNewType = @"unknown";
+        if (self.hlsObject != nil) {
+            if (self.hlsObject.playlistType == HLSPlaylistTypeMaster) theOldType = @"master";
+            else if (self.hlsObject.playlistType == HLSPlaylistTypeMedia) theOldType = @"media";
+        }
+        if (theNewHLS.playlistType == HLSPlaylistTypeMaster) theNewType = @"master";
+        else if (theNewHLS.playlistType == HLSPlaylistTypeMedia) theNewType = @"media";
+        if (self.hlsObject == nil) {
+            content = [NSString stringWithFormat:@"The HLS is %@ playlist.", theNewType];
+        } else {
+            content = [NSString stringWithFormat:@"The new HLS is %@ playlist, the old HLS is %@ playlist.", theNewType, theOldType];
+        }
+        [self appendContentToTextView:content];
+        
+        if (self.hlsObject == nil || isNewHLS) {
+            self.hlsObject = theNewHLS;
         }
     }
-    content = [NSString stringWithFormat:@"Done! The HLS file is %@.", isNewHLS ? @"changed" : @"not changed"];
+    content = [NSString stringWithFormat:@"The HLS file is %@.\nDone!", isNewHLS ? @"changed" : @"not changed"];
     [self appendContentToTextView:content];
     return isNewHLS;
 }

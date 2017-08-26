@@ -8,13 +8,13 @@
 
 #import <Foundation/Foundation.h>
 
-@class HLSObject;
+@class HLSMediaPlaylist;
 
 @interface HLSUtils : NSObject
 
 + (BOOL)determineHLSM3UFromData:(NSData *)data;
 + (BOOL)determineHLSM3UFromFile:(NSString *)file;
-+ (BOOL)determineTheNewMediaSegment:(HLSObject *)theNewHLS old:(HLSObject *)theOldHLS;
++ (BOOL)determineTheNewMediaSegment:(HLSMediaPlaylist *)theNewMediaPlaylist old:(HLSMediaPlaylist *)theOldMediaPlaylist;
 
 + (NSString *)computerSizeString:(CGFloat)size;
 + (NSString *)computerSizeString:(CGFloat)size specifiedUnit:(NSString **)specifiedUnit;

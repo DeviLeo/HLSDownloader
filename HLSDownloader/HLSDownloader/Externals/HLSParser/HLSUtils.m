@@ -8,6 +8,7 @@
 
 #import "HLSUtils.h"
 #import "HLSObject.h"
+#import "HLSMediaPlaylist.h"
 #import "HLSMediaSegment.h"
 #import "HLSConstants.h"
 
@@ -34,16 +35,16 @@
     return [HLSUtils determineHLSM3UFromData:data];
 }
 
-+ (BOOL)determineTheNewMediaSegment:(HLSObject *)theNewHLS old:(HLSObject *)theOldHLS {
-    for (HLSMediaSegment *theOldSegment in theOldHLS.segments) {
-        for (HLSMediaSegment *theNewSegment in theNewHLS.segments) {
++ (BOOL)determineTheNewMediaSegment:(HLSMediaPlaylist *)theNewMediaPlaylist old:(HLSMediaPlaylist *)theOldMediaPlaylist {
+    for (HLSMediaSegment *theOldSegment in theOldMediaPlaylist.segments) {
+        for (HLSMediaSegment *theNewSegment in theNewMediaPlaylist.segments) {
             if ([theOldSegment.url isEqualToString:theNewSegment.url]) {
                 theNewSegment.downloadable = NO;
             }
         }
     }
     BOOL hasNewSegment = NO;
-    for (HLSMediaSegment *theNewSegment in theNewHLS.segments) {
+    for (HLSMediaSegment *theNewSegment in theNewMediaPlaylist.segments) {
         if (theNewSegment.downloadable) {
             hasNewSegment = YES;
             break;

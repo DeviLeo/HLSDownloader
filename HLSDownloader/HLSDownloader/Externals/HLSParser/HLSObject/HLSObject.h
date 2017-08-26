@@ -9,25 +9,19 @@
 #import <Foundation/Foundation.h>
 #import "HLSTypeDef.h"
 
-@class HLSMediaSegment;
 @class HLSMasterPlaylist;
+@class HLSMediaPlaylist;
 
 @interface HLSObject : NSObject
 
 @property (nonatomic) NSString *url;
 @property (nonatomic) NSString *file;
-@property (nonatomic) NSInteger version;
-@property (nonatomic) NSInteger targetDuration;
-@property (nonatomic) CGFloat lastMediaSegmentDuration;
-@property (nonatomic) NSInteger mediaSequence;
-@property (nonatomic) BOOL discontinuity;
-@property (nonatomic) NSInteger discontinuitySequence;
-@property (nonatomic) BOOL endList;
 @property (nonatomic) HLSPlaylistType playlistType;
-@property (nonatomic) NSMutableArray<HLSMediaSegment *> *segments;
 @property (nonatomic) HLSMasterPlaylist *masterPlaylist;
+@property (nonatomic) HLSMediaPlaylist *mediaPlaylist;
 
 - (instancetype)initWithFile:(NSString *)file;
-- (void)parse;
+- (BOOL)parse;
+- (BOOL)parseWithError:(NSError **)parseError;
 
 @end
