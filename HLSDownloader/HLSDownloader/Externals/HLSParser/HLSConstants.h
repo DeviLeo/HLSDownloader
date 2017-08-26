@@ -49,6 +49,8 @@
 #define HLSTagKeySCTE35In               @"SCTE35-IN"
 #define HLSTagKeyVideo                  @"VIDEO"
 #define HLSTagKeyAudio                  @"AUDIO"
+#define HLSTagKeyResolution             @"RESOLUTION"
+#define HLSTagKeyProgramID              @"PROGRAM-ID"
 
 #pragma mark - Tag Value
 #define HLSTagValuePlaylistTypeEvent    @"EVENT"

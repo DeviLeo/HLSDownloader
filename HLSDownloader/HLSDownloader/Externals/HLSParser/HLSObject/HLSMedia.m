@@ -11,6 +11,18 @@
 
 @implementation HLSMedia
 
+- (instancetype)initWithAttributes:(NSDictionary *)attributes {
+    self = [super init];
+    if (self) {
+        self.name = attributes[HLSTagKeyName];
+        self.groupID = attributes[HLSTagKeyGroupID];
+        self.typeString = attributes[HLSTagKeyType];
+        self.uri = attributes[HLSTagKeyURI];
+        self.defaultString = attributes[HLSTagKeyDefault];
+    }
+    return self;
+}
+
 - (void)setTypeString:(NSString *)typeString {
     _typeString = typeString;
     if (typeString == nil) _type = HLSMediaTypeUndefined;

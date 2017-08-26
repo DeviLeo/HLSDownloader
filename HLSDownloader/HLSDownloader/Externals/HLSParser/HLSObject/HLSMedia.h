@@ -19,4 +19,6 @@
 @property (nonatomic) NSString *defaultString;
 @property (nonatomic) BOOL isDefault;
 
+- (instancetype)initWithAttributes:(NSDictionary *)attributes;
+
 @end

@@ -17,5 +17,10 @@
 @property (nonatomic) NSInteger averageBandwidth;
 @property (nonatomic) NSString *videoGroupID;
 @property (nonatomic) NSString *audioGroupID;
+@property (nonatomic) CGSize resolution;
+@property (nonatomic) NSString *resolutionString;
+@property (nonatomic) NSString *programID;
+
+- (instancetype)initWithAttributes:(NSDictionary *)attributes;
 
 @end

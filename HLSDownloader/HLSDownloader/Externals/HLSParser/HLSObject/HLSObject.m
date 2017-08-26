@@ -126,38 +126,22 @@
 
 - (HLSMedia *)parseMedia:(NSString *)line {
     NSDictionary *attributes = [self parseAttributes:line];
-    HLSMedia *media = [[HLSMedia alloc] init];
-    media.name = attributes[HLSTagKeyName];
-    media.groupID = attributes[HLSTagKeyGroupID];
-    media.typeString = attributes[HLSTagKeyType];
-    media.uri = attributes[HLSTagKeyURI];
-    media.defaultString = attributes[HLSTagKeyDefault];
+    HLSMedia *media = [[HLSMedia alloc] initWithAttributes:attributes];
     return media;
 }
 
 - (HLSStreamInfo *)parseIFrameStreamInf:(NSString *)line {
     NSDictionary *attributes = [self parseAttributes:line];
-    HLSStreamInfo *stream = [[HLSStreamInfo alloc] init];
+    HLSStreamInfo *stream = [[HLSStreamInfo alloc] initWithAttributes:attributes];
     stream.isIFrame = YES;
-    stream.uri = attributes[HLSTagKeyURI];
-    stream.codecs = attributes[HLSTagKeyCodecs];
-    stream.bandwidth = [attributes[HLSTagKeyBandwidth] integerValue];
-    stream.averageBandwidth = [attributes[HLSTagKeyAverageBandwidth] integerValue];
-    stream.videoGroupID = attributes[HLSTagKeyVideo];
-    stream.audioGroupID = attributes[HLSTagKeyAudio];
     return stream;
 }
 
 - (HLSStreamInfo *)parseStreamInf:(NSString *)line moreLines:(NSArray<NSString *> *)moreLines {
     NSDictionary *attributes = [self parseAttributes:line];
-    HLSStreamInfo *stream = [[HLSStreamInfo alloc] init];
+    HLSStreamInfo *stream = [[HLSStreamInfo alloc] initWithAttributes:attributes];
     stream.isIFrame = NO;
     stream.uri = moreLines.count == 0 ? nil : [moreLines firstObject];
-    stream.codecs = attributes[HLSTagKeyCodecs];
-    stream.bandwidth = [attributes[HLSTagKeyBandwidth] integerValue];
-    stream.averageBandwidth = [attributes[HLSTagKeyAverageBandwidth] integerValue];
-    stream.videoGroupID = attributes[HLSTagKeyVideo];
-    stream.audioGroupID = attributes[HLSTagKeyAudio];
     return stream;
 }
 
@@ -248,19 +232,15 @@
     NSCharacterSet *set = [NSCharacterSet whitespaceAndNewlineCharacterSet];
     NSMutableString *oneLine = [NSMutableString stringWithCapacity:256];
     NSString *str = line;
-    BOOL shouldHandleMore = NO;
+    BOOL shouldHandleMore = YES;
     do {
         NSString *trimmedString = [str stringByTrimmingCharactersInSet:set];
         NSInteger lastCharIndex = trimmedString.length - 1;
         NSString *lastCharString = [trimmedString substringFromIndex:lastCharIndex];
-        if ([lastCharString isEqualToString:@"\\"]) {
-            str = [trimmedString substringToIndex:lastCharIndex];
-        } else {
-            shouldHandleMore = NO;
-        }
+        if ([lastCharString isEqualToString:@"\\"]) { str = [trimmedString substringToIndex:lastCharIndex]; }
+        else { shouldHandleMore = NO; }
         [oneLine appendString:str];
-        if ([lastCharString isEqualToString:@","]) break;
-        if (moreLines.count == 0) break;
+        if (!shouldHandleMore || moreLines.count == 0) break;
         str = [moreLines firstObject];
         [moreLines removeObjectAtIndex:0];
     } while (shouldHandleMore);
@@ -283,7 +263,7 @@
         // Find key
         NSRange r = [str rangeOfString:@"=" options:0 range:NSMakeRange(index, len)];
         if (r.location == NSNotFound) break;
-        NSString *key = [str substringWithRange:NSMakeRange(index, r.location)];
+        NSString *key = [str substringWithRange:NSMakeRange(index, r.location-index)];
         key = [key stringByTrimmingCharactersInSet:set];
         index = r.location + r.length;
         len = length - index;
@@ -297,19 +277,19 @@
             // Find the next quote
             r = [str rangeOfString:@"\"" options:0 range:NSMakeRange(index+1, len-1)];
             if (r.location == NSNotFound) break;
-            value = [str substringWithRange:NSMakeRange(index+1, r.location-index)];
+            value = [str substringWithRange:NSMakeRange(index+1, r.location-index-1)];
             dict[key] = value;
             index = r.location + r.length;
             len = length - index;
-        }
-        
-        dict[key] = value;
-        r = [str rangeOfString:@"," options:0 range:NSMakeRange(index, len)];
-        if (r.location == NSNotFound) break;
-        if (value == nil) { // Not quoted-string value
-            value = [str substringWithRange:NSMakeRange(index, r.location-index)];
+            r = [str rangeOfString:@"," options:0 range:NSMakeRange(index, len)];
+            if (r.location == NSNotFound) break; // No more attributes
+        } else {
+            r = [str rangeOfString:@"," options:0 range:NSMakeRange(index, len)];
+            if (r.location == NSNotFound) value = [str substringFromIndex:index]; // The last attribute
+            else value = [str substringWithRange:NSMakeRange(index, r.location-index)];
             value = [value stringByTrimmingCharactersInSet:set];
             dict[key] = value;
+            if (r.location == NSNotFound) break; // No more attributes
         }
         index = r.location + r.length;
         len = length - index;
