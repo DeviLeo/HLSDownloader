@@ -83,6 +83,7 @@
 #define HLSTagValuePlaylistTypeVOD      @"VOD"
 #define HLSTagValueMediaTypeAudio       @"AUDIO"
 #define HLSTagValueMediaTypeVideo       @"VIDEO"
+#define HLSTagValueMediaTypeSubtitles   @"SUBTITLES"
 #define HLSTagValueBooleanYES           @"YES"
 #define HLSTagValueBooleanNO            @"NO"
 

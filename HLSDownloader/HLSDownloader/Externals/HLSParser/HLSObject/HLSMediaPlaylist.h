@@ -13,6 +13,9 @@
 
 @interface HLSMediaPlaylist : NSObject
 
+@property (nonatomic) NSString *hlsURL;
+@property (nonatomic) NSString *content;
+
 @property (nonatomic) NSInteger version;
 @property (nonatomic) NSInteger targetDuration;
 @property (nonatomic) NSInteger mediaSequence;
@@ -24,5 +27,7 @@
 
 @property (nonatomic) NSInteger currentMediaSequence;
 @property (nonatomic) CGFloat lastMediaSegmentDuration;
+
+- (void)parse:(NSString *)content withHLSURL:(NSString *)hlsURL;
 
 @end

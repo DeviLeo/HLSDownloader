@@ -20,6 +20,7 @@
         self.averageBandwidth = [attributes[HLSTagKeyAverageBandwidth] integerValue];
         self.videoGroupID = attributes[HLSTagKeyVideo];
         self.audioGroupID = attributes[HLSTagKeyAudio];
+        self.subtitlesGroupID = attributes[HLSTagKeySubtitles];
         self.resolutionString = attributes[HLSTagKeyResolution];
         self.programID = attributes[HLSTagKeyProgramID];
     }

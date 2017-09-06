@@ -13,8 +13,13 @@
 
 @interface HLSMasterPlaylist : NSObject
 
+@property (nonatomic) NSString *hlsURL;
+@property (nonatomic) NSString *content;
+
 @property (nonatomic) NSMutableArray<HLSStreamInfo *> *iframes;
 @property (nonatomic) NSMutableArray<HLSStreamInfo *> *streams;
 @property (nonatomic) NSMutableArray<HLSMedia *> *media;
+
+- (void)parse:(NSString *)content withHLSURL:(NSString *)hlsURL;
 
 @end

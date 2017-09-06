@@ -28,6 +28,7 @@ typedef enum : NSUInteger {
     HLSMediaTypeUnknown,
     HLSMediaTypeAudio,
     HLSMediaTypeVideo,
+    HLSMediaTypeSubtitles,
 } HLSMediaType;
 
 #endif /* HLSTypeDef_h */
