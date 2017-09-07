@@ -49,7 +49,7 @@
         do {
             readMore = [self shouldReadMoreLines:content[i]];
             if (!readMore || ++i >= count) break;
-            [moreLines addObject:content[i]];
+            if (content[i].length > 0) [moreLines addObject:content[i]];
             NSLog(@"** [%zd]line: %@", i+1, content[i]);
         } while(readMore);
         line = [self combineLine:line withMoreLines:moreLines];
@@ -59,6 +59,8 @@
 }
 
 - (BOOL)shouldReadMoreLines:(NSString *)line {
+    if (line.length == 0) return YES;
+    
     NSCharacterSet *set = [NSCharacterSet whitespaceAndNewlineCharacterSet];
     NSString *trimmedLine = [line stringByTrimmingCharactersInSet:set];
     NSInteger lastCharIndex = trimmedLine.length - 1;
