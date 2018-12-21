@@ -155,7 +155,7 @@
 }
 
 - (void)URLSession:(NSURLSession *)session dataTask:(NSURLSessionDataTask *)dataTask didReceiveData:(NSData *)data {
-    NSLog(@"didReceiveData: %zd of %zd", data.length, dataTask.response.expectedContentLength);
+    NSLog(@"didReceiveData: %zd of %lld", data.length, dataTask.response.expectedContentLength);
     BOOL writeToFile = YES;
     if (self.recvDataBlock != nil) writeToFile = self.recvDataBlock(data);
     if (writeToFile) [self.fileHandle writeData:data];

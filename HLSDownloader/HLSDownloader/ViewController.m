@@ -14,6 +14,7 @@
 #import "HLSMediaSegmentsManager.h"
 #import "HLSUtils.h"
 
+#define UserDefaultsSecurityScopeBookmarkKey  @"securityscopebookmark"
 #define UserDefaultsHLSURLKey           @"hlsurl"
 #define UserDefaultsDownloadFolderKey   @"downloadfolder"
 
@@ -63,6 +64,11 @@
     [super setRepresentedObject:representedObject];
 
     // Update the view, if already loaded.
+}
+
+- (void)viewDidAppear {
+    [super viewDidAppear];
+    [self checkPermission];
 }
 
 #pragma mark - Init
@@ -183,6 +189,9 @@
 }
 
 - (IBAction)onDownloadTapped:(id)sender {
+    BOOL hasPermission = [self checkPermission];
+    if (!hasPermission) return;
+    
     [self initHLSParser];
     [self initMediaFile];
     [self saveHLSUrl];
@@ -311,7 +320,7 @@
         
         NSURL *url = [NSURL URLWithString:segment.url];
         NSString *filename = url.lastPathComponent;
-        NSString *filepath = [HLSUtils moveDownloadedFile:file toFolder:_folderPath renameTo:filename];
+        NSString *filepath = [HLSUtils moveDownloadedFile:file toFolder:self.folderPath renameTo:filename];
         if (![HLSUtils appendFile:filepath toFile:self.mediaFile]) {
             NSString *content = [NSString stringWithFormat:@"Failed to append file: %@ to %@", filepath, self.mediaFile];
             [self appendContentToTextView:content];
@@ -354,7 +363,7 @@
         
         NSURL *url = [NSURL URLWithString:parser.urlString];
         NSString *filename = url.lastPathComponent;
-        NSString *theNewFile = [HLSUtils moveDownloadedFile:file toFolder:_folderPath renameTo:filename];
+        NSString *theNewFile = [HLSUtils moveDownloadedFile:file toFolder:self.folderPath renameTo:filename];
         if ([self parseHLSFile:theNewFile withURL:parser.urlString]) [self startDownloadTSStream];
     });
 }
@@ -468,6 +477,111 @@
     self.tfFolderPath.stringValue = downloadFolder;
     self.folderPath = downloadFolder;
     return downloadFolder;
+}
+
+#pragma mark - Sandbox
+- (BOOL)checkPermission {
+    NSData *data = [self loadSecurityScopeBookmark];
+    if (!data) {
+        NSString *content = @"FAILED to load security scope bookmark.";
+        [self appendContentToTextView:content];
+        [self requestPermission];
+        return NO;
+    }
+    
+    NSURL *url = [self resolveURLFromSecurityScopeBookmark:data];
+    if (url == nil) {
+        NSString *content = @"FAILED to parse security scope bookmark.";
+        [self appendContentToTextView:content];
+        [self requestPermission];
+        return NO;
+    }
+    BOOL granted = [url startAccessingSecurityScopedResource];
+    NSString *folderPath = [[url.absoluteString stringByReplacingOccurrencesOfString:@"file://" withString:@""] stringByRemovingPercentEncoding];
+    NSString *content = [NSString stringWithFormat:@"%@ to access %@", granted ? @"Granted" : @"Denied", folderPath];
+    [self appendContentToTextView:content];
+    
+    NSString *downloadFolder = [self loadDownloadFolder];
+    if (downloadFolder && ![downloadFolder containsString:folderPath]) {
+        NSString *content = [NSString stringWithFormat:@"No access to download folder %@, because it is not the sub folder in %@.", downloadFolder, folderPath];
+        [self appendContentToTextView:content];
+    }
+    
+    return granted;
+}
+
+- (void)requestPermission {
+    NSOpenPanel *op = [NSOpenPanel openPanel];
+    op.title = @"Request Access to Folder";
+    op.prompt = @"Grant";
+    op.canChooseFiles = NO;
+    op.canChooseDirectories = YES;
+    op.allowsMultipleSelection = NO;
+    [op beginWithCompletionHandler:^(NSModalResponse result) {
+        NSArray *urls = [op URLs];
+        if (urls.count == 0) {
+            NSString *downloadFolder = [self loadDownloadFolder];
+            if (downloadFolder) {
+                NSString *content = [NSString stringWithFormat:@"No access to %@", downloadFolder];
+                [self appendContentToTextView:content];
+            }
+            return;
+        }
+        NSURL *url = [urls firstObject];
+        NSString *folderPath = [[url.absoluteString stringByReplacingOccurrencesOfString:@"file://" withString:@""] stringByRemovingPercentEncoding];
+        self.tfFolderPath.stringValue = folderPath;
+        self.folderPath = folderPath;
+        [self saveDownloadFolder];
+        [self saveSecurityScopeBookmark:url];
+        BOOL granted = [url startAccessingSecurityScopedResource];
+        NSString *content = [NSString stringWithFormat:@"%@ to access %@", granted ? @"Granted" : @"Denied", folderPath];
+        [self appendContentToTextView:content];
+    }];
+}
+
+- (NSURL *)resolveURLFromSecurityScopeBookmark:(NSData *)data {
+    BOOL isStale = NO;
+    NSError *error = nil;
+    NSURL *url = [NSURL URLByResolvingBookmarkData:data options:NSURLBookmarkResolutionWithSecurityScope relativeToURL:nil bookmarkDataIsStale:&isStale error:&error];
+    if (error) {
+        NSString *content = [NSString stringWithFormat:@"[%zd]%@", error.code, error.localizedDescription];
+        [self appendContentToTextView:content];
+        return nil;
+    }
+    
+    if (isStale) {
+        [self saveSecurityScopeBookmark:url];
+    }
+    return url;
+}
+
+- (NSData *)loadSecurityScopeBookmark {
+    NSData *data = [[NSUserDefaults standardUserDefaults] objectForKey:UserDefaultsSecurityScopeBookmarkKey];
+    return data;
+}
+
+- (void)saveSecurityScopeBookmark:(NSURL *)url {
+    NSError *error = nil;
+    NSData *data = [url bookmarkDataWithOptions:NSURLBookmarkCreationWithSecurityScope
+                 includingResourceValuesForKeys:nil
+                                  relativeToURL:nil
+                                          error:&error];
+    if (error) {
+        NSString *content = [NSString stringWithFormat:@"[%zd]%@", error.code, error.localizedDescription];
+        [self appendContentToTextView:content];
+        return;
+    }
+    
+    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    if (data == nil) [ud removeObjectForKey:UserDefaultsSecurityScopeBookmarkKey];
+    else [ud setObject:data forKey:UserDefaultsSecurityScopeBookmarkKey];
+    BOOL success = [ud synchronize];
+    
+    if (!success) {
+        NSString *content = @"FAILE to save security scope bookmark.";
+        [self appendContentToTextView:content];
+        return;
+    }
 }
 
 @end

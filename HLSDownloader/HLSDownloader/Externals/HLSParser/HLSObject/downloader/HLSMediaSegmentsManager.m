@@ -98,8 +98,8 @@
         NSLog(@"downloader status: %zd", status);
     };
     downloader.progressBlock = ^(int64_t bytesWritten, int64_t totalBytesWritten, int64_t totalBytesExpectedToWrite) {
-        if ([_delegate respondsToSelector:@selector(HLSMediaSegment:dowloaded:totalDownloaded:total:)]) {
-            [_delegate HLSMediaSegment:segment dowloaded:bytesWritten totalDownloaded:totalBytesWritten total:totalBytesExpectedToWrite];
+        if ([weakSelf.delegate respondsToSelector:@selector(HLSMediaSegment:dowloaded:totalDownloaded:total:)]) {
+            [weakSelf.delegate HLSMediaSegment:segment dowloaded:bytesWritten totalDownloaded:totalBytesWritten total:totalBytesExpectedToWrite];
         }
     };
     downloader.completeBlock = ^(HLSDownloaderStatus status, NSString *file, NSError *error) {
@@ -111,8 +111,8 @@
             if (weakDownloader == nil) return;
             
             if (status == kHLSDownloaderStatusSuccess) {
-                if ([_delegate respondsToSelector:@selector(HLSMediaSegment:dowloadedFile:error:)]) {
-                    [_delegate HLSMediaSegment:segment dowloadedFile:file error:nil];
+                if ([weakSelf.delegate respondsToSelector:@selector(HLSMediaSegment:dowloadedFile:error:)]) {
+                    [weakSelf.delegate HLSMediaSegment:segment dowloadedFile:file error:nil];
                 }
             } else {
                 // Handle error
@@ -122,8 +122,8 @@
                 } else {
                     hlserror = error;
                 }
-                if ([_delegate respondsToSelector:@selector(HLSMediaSegment:dowloadedFile:error:)]) {
-                    [_delegate HLSMediaSegment:segment dowloadedFile:nil error:hlserror];
+                if ([weakSelf.delegate respondsToSelector:@selector(HLSMediaSegment:dowloadedFile:error:)]) {
+                    [weakSelf.delegate HLSMediaSegment:segment dowloadedFile:nil error:hlserror];
                 }
             }
             [weakSelf deleteDownloader:weakDownloader];

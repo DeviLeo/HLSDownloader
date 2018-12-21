@@ -42,8 +42,8 @@
         NSLog(@"downloader status: %zd", status);
     };
     downloader.progressBlock = ^(int64_t bytesWritten, int64_t totalBytesWritten, int64_t totalBytesExpectedToWrite) {
-        if ([_delegate respondsToSelector:@selector(HLSParser:dowloaded:totalDownloaded:total:)]) {
-            [_delegate HLSParser:weakSelf dowloaded:bytesWritten totalDownloaded:totalBytesWritten total:totalBytesExpectedToWrite];
+        if ([weakSelf.delegate respondsToSelector:@selector(HLSParser:dowloaded:totalDownloaded:total:)]) {
+            [weakSelf.delegate HLSParser:weakSelf dowloaded:bytesWritten totalDownloaded:totalBytesWritten total:totalBytesExpectedToWrite];
         }
     };
     downloader.recvDataBlock = ^(NSData *data) {
@@ -51,16 +51,16 @@
         BOOL isHLSFile = [HLSUtils determineHLSM3UFromData:data];
         weakSelf.isHLSFile = isHLSFile;
         BOOL continueDownload = NO;
-        if ([_delegate respondsToSelector:@selector(HLSParser:detectedFile:)]) {
-            continueDownload = [_delegate HLSParser:weakSelf detectedFile:isHLSFile];
+        if ([weakSelf.delegate respondsToSelector:@selector(HLSParser:detectedFile:)]) {
+            continueDownload = [weakSelf.delegate HLSParser:weakSelf detectedFile:isHLSFile];
         }
         if (!continueDownload) [weakSelf.downloader cancel];
         return continueDownload;
     };
     downloader.completeBlock = ^(HLSDownloaderStatus status, NSString *file, NSError *error) {
-        if (![_delegate respondsToSelector:@selector(HLSParser:dowloadedFile:error:)]) return;
+        if (![weakSelf.delegate respondsToSelector:@selector(HLSParser:dowloadedFile:error:)]) return;
         if (status == kHLSDownloaderStatusSuccess) {
-            [_delegate HLSParser:weakSelf dowloadedFile:weakSelf.downloader.file error:nil];
+            [weakSelf.delegate HLSParser:weakSelf dowloadedFile:weakSelf.downloader.file error:nil];
             return;
         }
         
@@ -71,7 +71,7 @@
         } else {
             hlserror = error;
         }
-        [_delegate HLSParser:weakSelf dowloadedFile:nil error:hlserror];
+        [weakSelf.delegate HLSParser:weakSelf dowloadedFile:nil error:hlserror];
     };
 }
 
