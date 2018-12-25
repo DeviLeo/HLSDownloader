@@ -49,6 +49,7 @@
         HLSDownloader *downloader = self.downloader[i];
         [downloader cancel];
     }
+    self.downloading = NO;
     [self clearAllDownloads];
     
 }

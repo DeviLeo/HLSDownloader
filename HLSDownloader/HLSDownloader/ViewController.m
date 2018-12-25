@@ -134,7 +134,10 @@
 
 #pragma mark - TextView
 - (void)appendContentToTextView:(NSString *)content {
-    self.tvContent.string = [NSString stringWithFormat:@"%@%@\n", self.tvContent.string, content];
+    NSString *string = [content stringByAppendingString:@"\n"];
+    BOOL scroll = (NSMaxY(self.tvContent.visibleRect) == NSMaxY(self.tvContent.bounds));
+    [self.tvContent.textStorage appendAttributedString:[[NSAttributedString alloc] initWithString:string]];
+    if (scroll) [self.tvContent scrollRangeToVisible: NSMakeRange(self.tvContent.string.length, 0)];
 }
 
 #pragma mark - Events
@@ -248,6 +251,7 @@
 }
 
 - (void)stopAllDownloading {
+    self.hlsObject = nil;
     self.reloadHLSPeriodically = NO;
     [self.hlsSegsManager cancelAllDownloads];
     
@@ -321,6 +325,11 @@
         NSURL *url = [NSURL URLWithString:segment.url];
         NSString *filename = url.lastPathComponent;
         NSString *filepath = [HLSUtils moveDownloadedFile:file toFolder:self.folderPath renameTo:filename];
+        if (filepath == nil) return;
+        
+        content = [NSString stringWithFormat:@"Renamed and moved downloaded file %@ to %@", file, filepath];
+        [self appendContentToTextView:content];
+        
         if (![HLSUtils appendFile:filepath toFile:self.mediaFile]) {
             NSString *content = [NSString stringWithFormat:@"Failed to append file: %@ to %@", filepath, self.mediaFile];
             [self appendContentToTextView:content];
@@ -333,9 +342,13 @@
 }
 
 - (void)HLSMediaSegmentsManagerAllDownloaded:(HLSMediaSegmentsManager *)manager {
-    if (!_reloadHLSPeriodically) return;
+    __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self startDownloadHLSFile];
+        if (!weakSelf.reloadHLSPeriodically) {
+            [self appendContentToTextView:@"All downloaded."];
+        } else {
+            [self startDownloadHLSFile];
+        }
     });
 }
 
