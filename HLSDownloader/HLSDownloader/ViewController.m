@@ -105,7 +105,7 @@
 - (void)initMediaFile {
     NSURL *url = [NSURL URLWithString:self.hlsParser.urlString];
     NSString *filename = [[url.lastPathComponent stringByDeletingPathExtension] stringByAppendingPathExtension:@"ts"];
-    NSString *filepath = [_folderPath stringByAppendingPathComponent:filename];
+    NSString *filepath = [self.folderPath stringByAppendingPathComponent:filename];
     self.mediaFile = filepath;
 }
 
@@ -171,6 +171,9 @@
         NSString *file = [[url.absoluteString stringByReplacingOccurrencesOfString:@"file://" withString:@""] stringByRemovingPercentEncoding];
         self.tfHLSFilePath.stringValue = file;
         self.hlsFile = file;
+        NSString *filename = [[url.lastPathComponent stringByDeletingPathExtension] stringByAppendingPathExtension:@"ts"];
+        NSString *filepath = [self.folderPath stringByAppendingPathComponent:filename];
+        self.mediaFile = filepath;
         [self saveDownloadFolder];
         if ([self parseHLSFile:file withURL:nil]) [self startDownloadTSStream];
     }];
@@ -178,8 +181,8 @@
 
 - (IBAction)onShowFolderInFinderTapped:(id)sender {
     BOOL opened = NO;
-    if (_folderPath.length > 0) {
-        NSURL *url = [NSURL fileURLWithPath:_folderPath];
+    if (self.folderPath.length > 0) {
+        NSURL *url = [NSURL fileURLWithPath:self.folderPath];
         opened = [[NSWorkspace sharedWorkspace] openURL:url];
     }
 }
@@ -477,7 +480,7 @@
 }
 
 - (void)saveDownloadFolder {
-    NSString *downloadfolder = _folderPath;
+    NSString *downloadfolder = self.folderPath;
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
     if (downloadfolder.length == 0) [ud removeObjectForKey:UserDefaultsDownloadFolderKey];
     else [ud setObject:downloadfolder forKey:UserDefaultsDownloadFolderKey];
