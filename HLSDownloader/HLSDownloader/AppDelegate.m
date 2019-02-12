@@ -27,4 +27,10 @@
     return YES;
 }
 
+- (void)newDocument:(id)sender {
+    NSStoryboard *sb = [NSStoryboard storyboardWithName:@"Main" bundle:nil];
+    NSWindowController *wc = [sb instantiateControllerWithIdentifier:@"HLSWindowController"];
+    [wc showWindow:nil];
+}
+
 @end

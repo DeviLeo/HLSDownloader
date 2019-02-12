@@ -44,6 +44,24 @@
                                     </items>
                                 </menu>
                             </menuItem>
+                            <menuItem title="File" id="3TR-Ba-Gy9">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <menu key="submenu" title="File" id="5CG-Xz-om6">
+                                    <items>
+                                        <menuItem title="New" keyEquivalent="n" id="SXw-3G-cki">
+                                            <connections>
+                                                <action selector="newDocument:" target="Ady-hI-5gd" id="I9X-F7-Jtf"/>
+                                            </connections>
+                                        </menuItem>
+                                        <menuItem isSeparatorItem="YES" id="QIW-iu-36I"/>
+                                        <menuItem title="Close" keyEquivalent="w" id="2f3-Dt-TFc">
+                                            <connections>
+                                                <action selector="performClose:" target="Ady-hI-5gd" id="Gbc-Gc-kjV"/>
+                                            </connections>
+                                        </menuItem>
+                                    </items>
+                                </menu>
+                            </menuItem>
                             <menuItem title="Edit" id="Fjx-lZ-R4B">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <menu key="submenu" title="Edit" id="sdQ-ev-uOs">
@@ -109,7 +127,7 @@
         <!--Window Controller-->
         <scene sceneID="R2V-B0-nI4">
             <objects>
-                <windowController id="B8D-0N-5wS" sceneMemberID="viewController">
+                <windowController storyboardIdentifier="HLSWindowController" id="B8D-0N-5wS" sceneMemberID="viewController">
                     <window key="window" title="HLSDownloader" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" visibleAtLaunch="NO" animationBehavior="default" id="IQv-IB-iLA">
                         <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
                         <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
