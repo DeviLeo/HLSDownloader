@@ -14,6 +14,8 @@
 @interface HLSMediaSegmentsManager : NSObject
 
 @property (nonatomic, weak) id<HLSMediaSegmentsManagerDelegate> delegate;
+@property (nonatomic) BOOL multithread;
+@property (nonatomic) NSInteger maxThreads;
 
 - (void)addSegment:(HLSMediaSegment *)segment;
 - (void)startDownloading;

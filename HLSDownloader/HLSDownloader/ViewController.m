@@ -17,6 +17,11 @@
 #define UserDefaultsSecurityScopeBookmarkKey  @"securityscopebookmark"
 #define UserDefaultsHLSURLKey           @"hlsurl"
 #define UserDefaultsDownloadFolderKey   @"downloadfolder"
+#define UserDefaultsMultiThreadKey      @"multithread"
+#define UserDefaultsMaxThreadsKey       @"maxthreads"
+
+@interface OnlyIntegerFormatter : NSNumberFormatter
+@end
 
 @interface ViewController () <HLSParserDelegate, NSTextFieldDelegate, HLSMediaSegmentsManagerDelegate>
 
@@ -28,12 +33,15 @@
 @property (nonatomic, weak) IBOutlet NSButton *btnChooseHLSFile;
 @property (nonatomic, weak) IBOutlet NSButton *btnShowFolderInFinder;
 @property (nonatomic, weak) IBOutlet NSButton *btnShowHLSFileInFinder;
+@property (nonatomic, weak) IBOutlet NSTextField *tfMaxThreads;
+@property (nonatomic, weak) IBOutlet NSButton *btnMultiThread;
 @property (nonatomic, weak) IBOutlet NSButton *btnDownload;
 @property (nonatomic, weak) IBOutlet NSButton *btnClear;
 @property (nonatomic, weak) IBOutlet NSButton *btnStopDownloading;
 @property (nonatomic, weak) IBOutlet NSProgressIndicator *piDownloadProgress;
 @property (nonatomic, weak) IBOutlet NSTextField *tfDownloadProgress;
 
+@property (nonatomic) BOOL multiThread;
 @property (nonatomic) NSTimeInterval startDownloadTime;
 @property (nonatomic) HLSParser *hlsParser;
 @property (nonatomic) BOOL downloading;
@@ -75,18 +83,19 @@
 - (void)initVars {
     self.tfUrl.delegate = self;
     self.tfFolderPath.delegate = self;
+    self.tfMaxThreads.formatter = [[OnlyIntegerFormatter alloc] init];
     self.tvContent.editable = NO;
     self.hlsSegsManager = [[HLSMediaSegmentsManager alloc] init];
     self.hlsSegsManager.delegate = self;
     self.reloadHLSPeriodically = YES;
     self.reloadHLSTimeInterval = 5;
     self.mediaFile = nil;
+    self.multiThread = NO;
     self.tfDownloadProgress.stringValue = @"Download Progress";
     self.piDownloadProgress.minValue = 0;
     self.piDownloadProgress.maxValue = 100;
     self.piDownloadProgress.doubleValue = 0;
-    [self loadHLSUrl];
-    [self loadDownloadFolder];
+    [self loadAllPreferences];
 }
 
 - (void)initHLSParser {
@@ -140,6 +149,27 @@
     if (scroll) [self.tvContent scrollRangeToVisible: NSMakeRange(self.tvContent.string.length, 0)];
 }
 
+#pragma mark - TextField MaxThreads
+- (NSInteger)maxThreads {
+    NSInteger maxThreads = [self.tfMaxThreads.stringValue integerValue];
+    if (maxThreads < 1) maxThreads = 1;
+    return maxThreads;
+}
+
+#pragma mark - UI
+- (void)beforeStart {
+    [self toggleThreadsUI:NO];
+}
+
+- (void)afterEnd {
+    [self toggleThreadsUI:YES];
+}
+
+- (void)toggleThreadsUI:(BOOL)enable {
+    self.tfMaxThreads.enabled = enable;
+    self.btnMultiThread.enabled = enable;
+}
+
 #pragma mark - Events
 - (IBAction)onChooseFolderTapped:(id)sender {
     NSOpenPanel *op = [NSOpenPanel openPanel];
@@ -175,7 +205,12 @@
         NSString *filepath = [self.folderPath stringByAppendingPathComponent:filename];
         self.mediaFile = filepath;
         [self saveDownloadFolder];
-        if ([self parseHLSFile:file withURL:nil]) [self startDownloadTSStream];
+        [self saveMultiThread];
+        [self saveMaxThreads];
+        if ([self parseHLSFile:file withURL:nil]) {
+            [self beforeStart];
+            [self startDownloadTSStream];
+        }
     }];
 }
 
@@ -194,14 +229,19 @@
     }
 }
 
+- (IBAction)onMultiThreadTapped:(id)sender {
+    self.multiThread = self.btnMultiThread.state == NSControlStateValueOn;
+    self.tfMaxThreads.enabled = self.multiThread;
+    self.hlsSegsManager.multithread = self.multiThread;
+}
+
 - (IBAction)onDownloadTapped:(id)sender {
     BOOL hasPermission = [self checkPermission];
     if (!hasPermission) return;
     
     [self initHLSParser];
     [self initMediaFile];
-    [self saveHLSUrl];
-    [self saveDownloadFolder];
+    [self saveAllPreferences];
     if (self.downloading) [self stopDownloadHLSFile];
     else [self startDownloadHLSFile];
 }
@@ -217,6 +257,7 @@
 
 #pragma mark - Download
 - (void)startDownloadHLSFile {
+    [self beforeStart];
     self.startDownloadTime = [NSDate date].timeIntervalSinceReferenceDate;
     [self.hlsParser startDownloadFile];
     self.downloading = YES;
@@ -229,6 +270,7 @@
 }
 
 - (void)stopDownloadHLSFile {
+    [self afterEnd];
     if (self.hlsParser == nil) return;
     [self.hlsParser cancelDownloadFile];
     self.downloading = NO;
@@ -241,6 +283,8 @@
 }
 
 - (void)startDownloadTSStream {
+    self.hlsSegsManager.maxThreads = [self maxThreads];
+    self.hlsSegsManager.multithread = self.multiThread;
     HLSMediaPlaylist *mediaPlaylist = self.hlsObject.mediaPlaylist;
     NSArray *segs = mediaPlaylist.segments;
     for (HLSMediaSegment *seg in segs) {
@@ -254,6 +298,7 @@
 }
 
 - (void)stopAllDownloading {
+    [self afterEnd];
     self.hlsObject = nil;
     self.reloadHLSPeriodically = NO;
     [self.hlsSegsManager cancelAllDownloads];
@@ -327,11 +372,16 @@
         
         NSURL *url = [NSURL URLWithString:segment.url];
         NSString *filename = url.lastPathComponent;
-        NSString *filepath = [HLSUtils moveDownloadedFile:file toFolder:self.folderPath renameTo:filename];
+        NSString *foldername = [[self.mediaFile stringByDeletingPathExtension] lastPathComponent];
+        NSString *folderpath = [self.folderPath stringByAppendingPathComponent:foldername];
+        NSString *filepath = [HLSUtils moveDownloadedFile:file toFolder:folderpath renameTo:filename];
+        segment.filepath = filepath;
         if (filepath == nil) return;
         
         content = [NSString stringWithFormat:@"Renamed and moved downloaded file %@ to %@", file, filepath];
         [self appendContentToTextView:content];
+        
+        if (self.multiThread) return;
         
         if (![HLSUtils appendFile:filepath toFile:self.mediaFile]) {
             NSString *content = [NSString stringWithFormat:@"Failed to append file: %@ to %@", filepath, self.mediaFile];
@@ -339,8 +389,6 @@
         } else {
             [HLSUtils deleteFile:filepath];
         }
-        
-        return;
     });
 }
 
@@ -348,11 +396,35 @@
     __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
         if (!weakSelf.reloadHLSPeriodically) {
+            [self afterEnd];
             [self appendContentToTextView:@"All downloaded."];
+            if (self.multiThread) [self mergeAllTS];
         } else {
             [self startDownloadHLSFile];
         }
     });
+}
+
+- (void)mergeAllTS {
+    HLSMediaPlaylist *mediaPlaylist = self.hlsObject.mediaPlaylist;
+    NSArray *segs = mediaPlaylist.segments;
+    BOOL hasError = NO;
+    for (HLSMediaSegment *seg in segs) {
+        NSString *filepath = seg.filepath;
+        if (![HLSUtils appendFile:filepath toFile:self.mediaFile]) {
+            if (!hasError) hasError = YES;
+            NSString *content = [NSString stringWithFormat:@"Failed to append file: %@ to %@", filepath, self.mediaFile];
+            [self appendContentToTextView:content];
+        } else {
+            [HLSUtils deleteFile:filepath];
+        }
+    }
+    if (!hasError) {
+        NSString *foldername = [[self.mediaFile stringByDeletingPathExtension] lastPathComponent];
+        NSString *folderpath = [self.folderPath stringByAppendingPathComponent:foldername];
+        [HLSUtils deleteFile:folderpath];
+    }
+    [self appendContentToTextView:@"Merge finished."];
 }
 
 #pragma mark - HLSParserDelegate
@@ -464,6 +536,20 @@
 }
 
 #pragma mark - Save / Load
+- (void)saveAllPreferences {
+    [self saveHLSUrl];
+    [self saveDownloadFolder];
+    [self saveMultiThread];
+    [self saveMaxThreads];
+}
+
+- (void)loadAllPreferences {
+    [self loadHLSUrl];
+    [self loadDownloadFolder];
+    [self loadMultiThread];
+    [self loadMaxThreads];
+}
+
 - (void)saveHLSUrl {
     NSString *hslurl = self.tfUrl.stringValue;
     NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
@@ -493,6 +579,34 @@
     self.tfFolderPath.stringValue = downloadFolder;
     self.folderPath = downloadFolder;
     return downloadFolder;
+}
+
+- (void)saveMultiThread {
+    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    [ud setBool:self.multiThread forKey:UserDefaultsMultiThreadKey];
+    [ud synchronize];
+}
+
+- (BOOL)loadMultiThread {
+    self.multiThread = [[NSUserDefaults standardUserDefaults] boolForKey:UserDefaultsMultiThreadKey];
+    self.btnMultiThread.state = self.multiThread ? NSControlStateValueOn : NSControlStateValueOff;
+    self.tfMaxThreads.enabled = self.multiThread;
+    return self.multiThread;
+}
+
+- (void)saveMaxThreads {
+    NSInteger maxThreads = [self maxThreads];
+    if (maxThreads < 1) maxThreads = 1;
+    NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
+    [ud setInteger:maxThreads forKey:UserDefaultsMaxThreadsKey];
+    [ud synchronize];
+}
+
+- (NSInteger)loadMaxThreads {
+    NSInteger maxThreads = [[NSUserDefaults standardUserDefaults] integerForKey:UserDefaultsMaxThreadsKey];
+    if (maxThreads < 1) maxThreads = 1;
+    self.tfMaxThreads.stringValue = [NSString stringWithFormat:@"%ld", maxThreads];
+    return maxThreads;
 }
 
 #pragma mark - Sandbox
@@ -598,6 +712,23 @@
         [self appendContentToTextView:content];
         return;
     }
+}
+
+@end
+
+#pragma mark - OnlyIntegerFormatter
+@implementation OnlyIntegerFormatter
+
+- (BOOL)isPartialStringValid:(NSString *)partialString newEditingString:(NSString *__autoreleasing  _Nullable *)newString errorDescription:(NSString *__autoreleasing  _Nullable *)error {
+    if([partialString length] == 0) return YES;
+    
+    NSScanner *scanner = [NSScanner scannerWithString:partialString];
+    if(!([scanner scanInteger:NULL] && [scanner isAtEnd])) {
+        NSBeep();
+        return NO;
+    }
+    
+    return YES;
 }
 
 @end

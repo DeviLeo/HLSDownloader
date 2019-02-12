@@ -17,6 +17,8 @@
 @property (nonatomic) NSMutableArray<HLSDownloader *> *downloader;
 @property (nonatomic) BOOL downloading;
 @property (nonatomic) BOOL cancelled;
+@property (nonatomic) NSInteger downloadedCount;
+@property (nonatomic) NSInteger downloadIndex;
 
 @end
 
@@ -35,12 +37,23 @@
     self.downloader = [NSMutableArray arrayWithCapacity:8];
     self.downloading = NO;
     self.cancelled = YES;
+    self.downloadedCount = 0;
+    self.multithread = NO;
+    self.maxThreads = 5;
+    self.downloadIndex = 0;
 }
 
 - (void)startDownloading {
     if (self.downloading) return;
+    self.downloadedCount = 0;
+    self.downloadIndex = 0;
     self.cancelled = NO;
-    [self downloadNext];
+    
+    if (self.multithread) {
+        [self downloadSimultaneously];
+    } else {
+        [self downloadNext];
+    }
 }
 
 - (void)cancelAllDownloads {
@@ -51,7 +64,6 @@
     }
     self.downloading = NO;
     [self clearAllDownloads];
-    
 }
 
 - (void)clearAllDownloads {
@@ -85,8 +97,32 @@
     [downloader start];
 }
 
+- (void)downloadSegment:(HLSMediaSegment *)segment {
+    HLSDownloader *downloader = [self createDownloader:segment];
+    [self.downloader addObject:downloader];
+    [self willDownload:segment];
+    [downloader start];
+}
+
+- (void)downloadSimultaneously {
+    if (!self.multithread) return;
+    NSArray *segments = self.segments;
+    NSInteger segmentsCount = segments.count;
+    if (self.downloadIndex >= self.segments.count) return;
+    NSInteger current = self.downloader.count;
+    if (current >= self.maxThreads) return;
+    while (self.downloadIndex < segmentsCount &&
+           current < self.maxThreads) {
+        HLSMediaSegment *segment = segments[self.downloadIndex];
+        [self downloadSegment:segment];
+        ++self.downloadIndex;
+        ++current;
+    }
+}
+
 - (void)addSegment:(HLSMediaSegment *)segment {
     [self.segments addObject:segment];
+    if (self.multithread) { return; }
     if (!_cancelled && !_downloading) [self downloadNext];
 }
 
@@ -128,9 +164,20 @@
                 }
             }
             [weakSelf deleteDownloader:weakDownloader];
-            [weakSelf deleteSegment:segment];
-            weakSelf.downloading = NO;
-            [weakSelf downloadNext];
+            if (weakSelf.multithread) {
+                ++weakSelf.downloadedCount;
+                [weakSelf downloadSimultaneously];
+                if (weakSelf.cancelled || weakSelf.segments.count == weakSelf.downloadedCount) {
+                    weakSelf.downloading = NO;
+                    [self clearAllDownloads];
+                    [self allDownloaded];
+                    return;
+                }
+            } else {
+                [weakSelf deleteSegment:segment];
+                weakSelf.downloading = NO;
+                [weakSelf downloadNext];
+            }
         });
     };
     return downloader;

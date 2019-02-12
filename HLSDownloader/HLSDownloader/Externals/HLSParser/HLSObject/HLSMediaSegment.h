@@ -14,5 +14,6 @@
 @property (nonatomic) CGFloat duration;
 @property (nonatomic) NSString *url;
 @property (nonatomic) BOOL downloadable;
+@property (nonatomic) NSString *filepath;
 
 @end
